@@ -14,18 +14,6 @@ from dotenv import load_dotenv
 
 # Habilite o modo de produção
 st.set_page_config(layout="wide")
-# Oculte a barra de código
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    #fileMenu {visibility: hidden;}
-    #sidebarContainer {visibility: hidden;}
-    .sidebar {visibility: hidden;}
-    </style>
-""", unsafe_allow_html=True)
-
-# Habilite o modo de produção
-st.set_page_config(layout="wide")
 
 # Oculte a barra de código
 st.markdown("""
