@@ -12,9 +12,6 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 
-# Habilite o modo de produção
-st.set_page_config(layout="wide")
-
 # Oculte a barra de código
 st.markdown("""
     <style>
