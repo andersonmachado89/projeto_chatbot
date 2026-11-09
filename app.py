@@ -8,61 +8,59 @@
 # Streamlit - Frontend e Backend
 
 import streamlit as st
-from openai import OpenAI     
-import os
-from dotenv import load_dotenv
+import ollama
 
-# Oculte a barra de código
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    #fileMenu {visibility: hidden;}
-    #sidebarContainer {visibility: hidden;}
-    .sidebar {visibility: hidden;}
-    .viewerBadge_link__1S137 {display: none;}
-    </style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="Chatbot Local", page_icon="🤖")
 
-load_dotenv()
-API_KEY = os.getenv("OPENAI_KEY")  
+MODELO = "qwen3.5:2b"
 
-modelo = OpenAI(api_key=API_KEY)
-
-st.write("Chatbot do Anderson com IA")
-
-# session_state = memoria do streamlit
-if not "lista_mensagens" in st.session_state:
+if "lista_mensagens" not in st.session_state:
     st.session_state["lista_mensagens"] = []
-    
-#Adicionar uma mensagem
-#st.session_state["lista_mensagens"] = []
 
-#Exibir o histórico de mensagens
+# Barra lateral
+with st.sidebar:
+    st.header("⚙️ Configurações")
+    prompt_sistema = st.text_area(
+        "Personalidade da IA",
+        "Você é um assistente útil e responde sempre em português.",
+    )
+    if st.button("🗑️ Limpar conversa", use_container_width=True):
+        st.session_state["lista_mensagens"] = []
+        st.rerun()
+
+    historico = "\n\n".join(
+        f"{m['role']}: {m['content']}" for m in st.session_state["lista_mensagens"]
+    )
+    st.download_button("💾 Baixar conversa", historico, "conversa.txt")
+
+# Cabeçalho
+st.title("🤖 Chatbot Local")
+st.caption(f"Rodando localmente com Ollama • {MODELO}")
+
+# Histórico
 for msg in st.session_state["lista_mensagens"]:
-    chave = msg["role"]
-    texto = msg["content"] 
-    st.chat_message(chave).write(texto)
+    avatar = "🤖" if msg["role"] == "assistant" else "🧑"
+    st.chat_message(msg["role"], avatar=avatar).write(msg["content"])
+
+# Streaming da resposta
+def gerar_resposta():
+    mensagens = [{"role": "system", "content": prompt_sistema}] + st.session_state["lista_mensagens"]
+    stream = ollama.chat(
+        model=MODELO,
+        messages=mensagens,
+        think=False,
+        stream=True,
+    )
+    for chunk in stream:
+        yield chunk.message.content or ""
 
 mensagem_usuario = st.chat_input("Escreva sua mensagem aqui")
 
 if mensagem_usuario:
-    # user -> Ser humano
-    # assistant -> Inteligência Artificial
-    st.chat_message("user").write(mensagem_usuario)
-    mensagem = {"role":"user", "content":mensagem_usuario}
-    st.session_state["lista_mensagens"].append(mensagem)
-    
-    #Resposta da IA
-    resposta_modelo = modelo.chat.completions.create(
-        messages=st.session_state["lista_mensagens"],
-        model="gpt-4o"
-    )
-    
-    resposta_ia = resposta_modelo.choices[0].message.content
-    
-    #Exibir a IA na tela
-    st.chat_message("ai").write(resposta_ia)    
-    mensagem_ia = {"role":"assistant", "content":resposta_ia}
-    st.session_state["lista_mensagens"].append(mensagem_ia)
-    
-    #print(st.session_state["lista_mensagens"])
+    st.chat_message("user", avatar="🧑").write(mensagem_usuario)
+    st.session_state["lista_mensagens"].append({"role": "user", "content": mensagem_usuario})
+
+    with st.chat_message("assistant", avatar="🤖"):
+        resposta_ia = st.write_stream(gerar_resposta())
+
+    st.session_state["lista_mensagens"].append({"role": "assistant", "content": resposta_ia})
